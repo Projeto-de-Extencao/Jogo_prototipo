@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mundo das Descobertas - Acessível</title>
+    <style>
+        :root { 
+            --azul: #4a90e2; --verde: #81c784; --fundo: #f0f8ff; 
+            --laranja: #ffb74d; --cinza: #f8f9fa; --rosa: #ff85a1; --roxo: #a29bfe;
+            --ouro: #f1c40f;
+        }
+
+        body { 
+            font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--fundo); 
+            margin: 0; display: flex; justify-content: center; align-items: center; 
+            height: 100vh; overflow: hidden; 
+        }
+
+        #game-container { 
+            background: white; width: 90%; max-width: 800px; padding: 25px; 
+            border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); 
+            text-align: center; position: relative; max-height: 95vh; overflow-y: auto;
+        }
+
+        .hidden { display: none !important; }
+
+        /* Botão de Som Flutuante */
+        #btn-sound {
+            position: absolute; top: 20px; right: 20px; font-size: 28px;
+            background: none; border: none; cursor: pointer; z-index: 1000;
+            transition: transform 0.2s;
+        }
+        #btn-sound:hover { transform: scale(1.1); }
+
+        /* Botões Padrão */
+        .btn { 
+            background: var(--azul); color: white; border: none; padding: 15px 30px; 
+            font-size: 18px; font-weight: bold; border-radius: 50px; cursor: pointer;
+            box-shadow: 0 4px 0 #357abd; transition: 0.2s; margin-top: 10px;
+        }
+        .btn:active { transform: translateY(2px); box-shadow: none; }
+        .btn-back { background: #bbb; box-shadow: 0 4px 0 #999; font-size: 14px; margin-bottom: 15px; }
+
+        /* Mapa de Mundos */
+        .map-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-top: 20px; }
+        .category-card { 
+            padding: 25px 10px; border-radius: 15px; color: white; font-weight: bold; 
+            cursor: pointer; box-shadow: 0 5px 0 rgba(0,0,0,0.1); position: relative;
+        }
+        .check-mark { position: absolute; top: -10px; right: -10px; font-size: 30px; display: none; }
+
+        /* Trilha com Linha de Caminho */
+        .trail-container { 
+            display: flex; flex-direction: column; align-items: center; 
+            padding: 20px 0; background: #fdfdfd; border-radius: 15px; margin: 15px 0;
+            border: 2px solid #eee; position: relative; z-index: 1;
+        }
+        /* A Linha do Caminho */
+        .trail-container::before {
+            content: ''; position: absolute; top: 40px; bottom: 40px; left: 50%;
+            width: 8px; background: #e0e0e0; transform: translateX(-50%); z-index: -1; border-radius: 10px;
+        }
+        .node {
+            width: 65px; height: 65px; border-radius: 50%; background: #ddd;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 22px; font-weight: bold; color: white; margin: 15px 0;
+            cursor: not-allowed; position: relative; transition: 0.3s;
+            border: 4px solid white; /* Cria um contorno limpo sobre a linha */
+        }
+        .node.active { background: var(--azul); cursor: pointer; transform: scale(1.15); box-shadow: 0 5px 0 #357abd; }
+        .node.done { background: var(--verde); cursor: pointer; box-shadow: 0 5px 0 #61a864; }
+        .map-icon { font-size: 50px; margin: 10px 0; display: block; background: #fdfdfd; padding: 5px; border-radius: 50%; }
+
+        /* Jogo */
+        .grid { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin: 20px 0; }
+        .card { font-size: 50px; padding: 10px; background: #eee; border: 3px solid #ddd; border-radius: 15px; cursor: pointer; min-width: 80px; }
+        .drop-zone { width: 85px; height: 85px; border: 3px dashed #ccc; border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 45px; opacity: 0.4; }
+        .drop-zone.filled { opacity: 1; border: 3px solid var(--verde); background: #e8f5e9; }
+
+        /* TELA FINAL ESPECIAL */
+        #view-grand-finale { background: linear-gradient(135deg, #fff, #e3f2fd); padding: 40px 20px; }
+        .medal-icon { font-size: 100px; margin: 20px; display: inline-block; animation: bounce 2s infinite; }
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
+        .trophy-shelf { font-size: 40px; margin: 20px 0; letter-spacing: 15px; }
+    </style>
+</head>
+<body>
+
+<audio id="bg-music" loop>
+    <source src="https://cdn.pixabay.com/download/audio/2022/02/07/audio_24866f28eb.mp3" type="audio/mpeg">
+</audio>
+
+<div id="game-container">
+    
+    <button id="btn-sound" onclick="Game.toggleSound()" title="Ativar/Desativar Som">🔊</button>
+
+    <div id="view-login">
+        <h1>Boas-vindas! 😊</h1>
+        
+        <p>Qual é o seu nome?</p>
+        <input type="text" id="in-name" style="padding: 12px; border-radius: 10px; border: 2px solid #ddd; width: 70%;" placeholder="Escreva seu nome...">
+        
+        <p>Quantos anos você tem? <span style="font-size: 12px; color: #888;">(Opcional)</span></p>
+        <input type="number" id="in-age" style="padding: 12px; border-radius: 10px; border: 2px solid #ddd; width: 70%;" placeholder="Sua idade...">
+        
+        <br><br>
+        <button class="btn" onclick="Game.doLogin()">Começar Jornada</button>
+    </div>
+
+    <div id="view-worlds" class="hidden">
+        <h2 id="txt-welcome"></h2>
+        <p>Escolha o próximo destino:</p>
+        <div class="map-grid" id="worlds-grid">
+            <div id="card-identificacao" class="category-card" style="background: var(--azul);" onclick="Game.openTrail('identificacao')"><span class="check-mark">✅</span>⭐ Exploração</div>
+            <div id="card-emocoes" class="category-card" style="background: var(--rosa);" onclick="Game.openTrail('emocoes')"><span class="check-mark">✅</span>😊 Sentimentos</div>
+            <div id="card-intrusos" class="category-card" style="background: var(--laranja);" onclick="Game.openTrail('intrusos')"><span class="check-mark">✅</span>👟 O Intruso</div>
+            <div id="card-quantidades" class="category-card" style="background: var(--verde);" onclick="Game.openTrail('quantidades')"><span class="check-mark">✅</span>🔢 Contagem</div>
+            <div id="card-arrastar" class="category-card" style="background: var(--roxo);" onclick="Game.openTrail('arrastar')"><span class="check-mark">✅</span>🧩 Sombras</div>
+        </div>
+    </div>
+
+    <div id="view-trail" class="hidden">
+        <button class="btn btn-back" onclick="Game.showView('view-worlds')">⬅️ Outros Mundos</button>
+        <h2 id="txt-trail-title">Sua Jornada</h2>
+        <div class="trail-container" id="trail-nodes"></div>
+    </div>
+
+    <div id="view-play" class="hidden">
+        <div style="display:flex; justify-content:space-between; align-items: center;">
+            <button class="btn btn-back" onclick="Game.showView('view-trail')">⬅️ Voltar à Trilha</button>
+            <b id="txt-level-num" style="color: var(--azul); font-size: 18px;"></b>
+        </div>
+        <h2 id="txt-task"></h2>
+        <div id="area-1" class="grid"></div>
+        <div id="area-2" class="grid"></div>
+        <div id="txt-feedback" style="height:30px; font-weight:bold; font-size:20px; margin:10px;"></div>
+        <button id="btn-next" class="btn hidden" onclick="Game.finishLevel()">Continuar ➡️</button>
+    </div>
+
+    <div id="view-win" class="hidden">
+        <h1 id="win-icon" style="font-size: 80px;">🏆</h1>
+        <h1 id="win-title">Incrível!</h1>
+        <p>Você dominou este mundo!</p>
+        <button class="btn" onclick="Game.checkUltimateVictory()">Verificar Progresso Total</button>
+    </div>
+
+    <div id="view-grand-finale" class="hidden">
+        <span class="medal-icon">🎖️</span>
+        <h1 style="color: var(--ouro); font-size: 35px;">PARABÉNS, SUPER EXPLORADOR!</h1>
+        <p>Você completou todos os desafios do Mundo das Descobertas!</p>
+        <div class="trophy-shelf" id="final-trophies">🚀🏰🏝️🏔️🌳</div>
+        <p>Você é nota 10! 🌟</p>
+        <br>
+        <button class="btn" style="background: var(--verde);" onclick="location.reload()">Jogar Novamente 🔄</button>
+    </div>
+
+</div>
+
+<script>
+const Game = {
+    userName: "",
+    userAge: "",
+    currentCat: "",
+    currentIdx: 0,
+    isMuted: false,
+    progress: { identificacao: 0, emocoes: 0, intrusos: 0, quantidades: 0, arrastar: 0 },
+
+    meta: {
+        identificacao: { start: "🏠", end: "🚀", title: "Missão Espacial" },
+        emocoes: { start: "🏠", end: "🏰", title: "Reino dos Sentimentos" },
+        intrusos: { start: "🏠", end: "🏝️", title: "Ilha Misteriosa" },
+        quantidades: { start: "🏠", end: "🏔️", title: "Montanha dos Números" },
+        arrastar: { start: "🏠", end: "🌳", title: "Floresta Mágica" }
+    },
+
+    levels: {
+        identificacao: [
+            { type: 'click', task: 'Ache a Estrela', items: ['🍎', '🎈', '⭐', '🍀', '💎'], correct: '⭐' },
+            { type: 'click', task: 'Encontre o Sol', items: ['☁️', '🌙', '☀️', '⭐', '🌈'], correct: '☀️' },
+            { type: 'click', task: 'Cadê a Borboleta?', items: ['🐜', '🐝', '🦋', '🕷️', '🦗'], correct: '🦋' },
+            { type: 'click', task: 'Ache o Avião', items: ['🚗', '🚲', '✈️', '🚢', '🚜'], correct: '✈️' },
+            { type: 'click', task: 'Onde está o Presente?', items: ['📦', '🎁', '🛍️', '🎒', '💼'], correct: '🎁' }
+        ],
+        emocoes: [
+            { type: 'click', task: 'Quem está Feliz?', items: ['😢', '😡', '😊', '😴', '🤢'], correct: '😊' },
+            { type: 'click', task: 'Quem está Triste?', items: ['😂', '😎', '😢', '🤩', '😜'], correct: '😢' },
+            { type: 'click', task: 'Quem está Bravo?', items: ['😇', '😡', '😱', '😍', '🤔'], correct: '😡' },
+            { type: 'click', task: 'Quem está com Sono?', items: ['😴', '🙄', '🥳', '🤓', '🤡'], correct: '😴' },
+            { type: 'click', task: 'Quem está Assustado?', items: ['🥶', '😱', '🤤', '🤠', '🤫'], correct: '😱' }
+        ],
+        intrusos: [
+            { type: 'click', task: 'O que NÃO é fruta?', items: ['🍎', '🍌', '👟', '🍇', '🍓'], correct: '👟' },
+            { type: 'click', task: 'O que NÃO é animal?', items: ['🐶', '🐱', '🦁', '🚗', '🐘'], correct: '🚗' },
+            { type: 'click', task: 'O que NÃO é de comer?', items: ['🍕', '🍔', '🍦', '🔨', '🍎'], correct: '🔨' },
+            { type: 'click', task: 'O que NÃO é brinquedo?', items: ['🧸', '🪁', '🏐', '🥦', '🪀'], correct: '🥦' },
+            { type: 'click', task: 'O que NÃO usamos no frio?', items: ['🧤', '🧣', '🧥', '🩱', '🧦'], correct: '🩱' }
+        ],
+        quantidades: [
+            { type: 'click', task: 'Onde tem 3 bolas?', items: ['⚽', '⚽⚽', '⚽⚽⚽', '⚽⚽⚽⚽'], correct: '⚽⚽⚽' },
+            { type: 'click', task: 'Onde tem 1 coração?', items: ['❤️❤️', '❤️', '❤️❤️❤️', '❤️❤️❤️❤️'], correct: '❤️' },
+            { type: 'click', task: 'Onde tem 5 estrelas?', items: ['⭐⭐', '⭐⭐⭐', '⭐⭐⭐⭐', '⭐⭐⭐⭐⭐'], correct: '⭐⭐⭐⭐⭐' },
+            { type: 'click', task: 'Onde tem 2 carros?', items: ['🚗', '🚗🚗', '🚗🚗🚗', '🚗🚗🚗🚗'], correct: '🚗🚗' },
+            { type: 'click', task: 'Onde tem 4 lápis?', items: ['✏️', '✏️✏️', '✏️✏️✏️', '✏️✏️✏️✏️'], correct: '✏️✏️✏️✏️' }
+        ],
+        arrastar: [
+            { type: 'drag', task: 'Combine as Frutas', pairs: [{id:'1', s:'🍎'}, {id:'2', s:'🍌'}, {id:'3', s:'🍇'}] },
+            { type: 'drag', task: 'Combine os Climas', pairs: [{id:'4', s:'☀️'}, {id:'5', s:'🌧️'}, {id:'6', s:'❄️'}] },
+            { type: 'drag', task: 'Combine os Animais', pairs: [{id:'7', s:'🐶'}, {id:'8', s:'🐱'}, {id:'9', s:'🦁'}] },
+            { type: 'drag', task: 'Combine as Formas', pairs: [{id:'a', s:'🔴'}, {id:'b', s:'🟦'}, {id:'c', s:'🟡'}] },
+            { type: 'drag', task: 'Combine as Cores', pairs: [{id:'d', s:'❤️'}, {id:'e', s:'💚'}, {id:'f', s:'💙'}, {id:'g', s:'💛'}] }
+        ]
+    },
+
+    toggleSound() {
+        this.isMuted = !this.isMuted;
+        document.getElementById('bg-music').muted = this.isMuted;
+        document.getElementById('btn-sound').innerText = this.isMuted ? "🔇" : "🔊";
+        
+        // Futuro: Quando você adicionar as dublagens, basta checar:
+        // if (!Game.isMuted) { /* Tocar áudio da voz aqui */ }
+    },
+
+    showView(id) {
+        document.querySelectorAll('#game-container > div').forEach(v => {
+            if(v.id !== 'btn-sound') v.classList.add('hidden');
+        });
+        document.getElementById(id).classList.remove('hidden');
+        if(id === 'view-worlds') this.updateWorldCards();
+    },
+
+    doLogin() {
+        this.userName = document.getElementById('in-name').value || "Amigo";
+        this.userAge = document.getElementById('in-age').value; // Apenas guardado em memória
+        document.getElementById('txt-welcome').innerText = "Olá, " + this.userName + "! ✨";
+        
+        // Iniciar música num volume super confortável (15%) para evitar sustos sensoriais
+        const bgAudio = document.getElementById('bg-music');
+        bgAudio.volume = 0.15; 
+        if(!this.isMuted) bgAudio.play().catch(() => {});
+        
+        this.showView('view-worlds');
+    },
+
+    updateWorldCards() {
+        for (let cat in this.progress) {
+            if (this.progress[cat] >= 5) {
+                document.querySelector(`#card-${cat} .check-mark`).style.display = 'inline';
+            }
+        }
+    },
+
+    openTrail(cat) {
+        this.currentCat = cat;
+        const container = document.getElementById('trail-nodes');
+        container.innerHTML = "";
+        const info = this.meta[cat];
+        document.getElementById('txt-trail-title').innerText = info.title;
+
+        // Ícone de início
+        const startIcon = document.createElement('span');
+        startIcon.className = 'map-icon';
+        startIcon.innerText = info.start;
+        container.appendChild(startIcon);
+
+        // Fases
+        const prog = this.progress[cat];
+        for (let i = 0; i < 5; i++) {
+            const node = document.createElement('div');
+            node.className = "node";
+            node.innerText = i + 1;
+            if (i < prog) node.classList.add('done');
+            else if (i === prog) node.classList.add('active');
+            node.onclick = () => { if (i <= prog) this.startLevel(i); };
+            container.appendChild(node);
+        }
+
+        // Ícone de fim
+        const endIcon = document.createElement('span');
+        endIcon.className = 'map-icon';
+        endIcon.innerText = info.end;
+        container.appendChild(endIcon);
+
+        this.showView('view-trail');
+    },
+
+    startLevel(idx) {
+        this.currentIdx = idx;
+        this.showView('view-play');
+        this.renderGame();
+    },
+
+    renderGame() {
+        const lv = this.levels[this.currentCat][this.currentIdx];
+        document.getElementById('txt-level-num').innerText = "Fase " + (this.currentIdx + 1);
+        document.getElementById('txt-task').innerText = lv.task;
+        document.getElementById('txt-feedback').innerText = "";
+        document.getElementById('btn-next').classList.add('hidden');
+        
+        // --- AQUI ENTRA A DUBILAGEM NO FUTURO ---
+        // Exemplo: if(!this.isMuted) playVoiceFor(lv.task);
+        // ----------------------------------------
+
+        const a1 = document.getElementById('area-1'); a1.innerHTML = "";
+        const a2 = document.getElementById('area-2'); a2.innerHTML = "";
+
+        if (lv.type === 'click') {
+            [...lv.items].sort(() => Math.random() - 0.5).forEach(it => {
+                const el = document.createElement('div');
+                el.className = 'card'; el.innerText = it;
+                el.onclick = () => {
+                    if(it === lv.correct) this.win();
+                    else document.getElementById('txt-feedback').innerText = "Tente de novo! 😊";
+                };
+                a1.appendChild(el);
+            });
+        } else {
+            this.matches = 0;
+            [...lv.pairs].sort(() => Math.random() - 0.5).forEach(p => {
+                const el = document.createElement('div');
+                el.className = 'card'; el.innerText = p.s; el.draggable = true;
+                el.id = "d-" + p.id;
+                el.ondragstart = (e) => e.dataTransfer.setData('text', p.id);
+                a1.appendChild(el);
+            });
+            lv.pairs.forEach(p => {
+                const zone = document.createElement('div');
+                zone.className = 'drop-zone'; zone.innerText = p.s;
+                zone.ondragover = (e) => e.preventDefault();
+                zone.ondrop = (e) => {
+                    const id = e.dataTransfer.getData('text');
+                    if(id === p.id) {
+                        zone.classList.add('filled');
+                        document.getElementById("d-" + id).style.visibility = "hidden";
+                        this.matches++;
+                        if(this.matches === lv.pairs.length) this.win();
+                    }
+                };
+                a2.appendChild(zone);
+            });
+        }
+    },
+
+    win() {
+        document.getElementById('txt-feedback').innerText = "Parabéns! ✨";
+        document.getElementById('btn-next').classList.remove('hidden');
+    },
+
+    finishLevel() {
+        if (this.currentIdx === this.progress[this.currentCat]) this.progress[this.currentCat]++;
+        if (this.progress[this.currentCat] >= 5) {
+            document.getElementById('win-icon').innerText = this.meta[this.currentCat].end;
+            this.showView('view-win');
+        } else {
+            this.openTrail(this.currentCat);
+        }
+    },
+
+    checkUltimateVictory() {
+        const allDone = Object.values(this.progress).every(p => p >= 5);
+        if (allDone) {
+            this.showView('view-grand-finale');
+        } else {
+            this.showView('view-worlds');
+        }
+    }
+};
+</script>
+</body>
+</html>
